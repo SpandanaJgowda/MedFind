@@ -1,0 +1,144 @@
+.pharmacy-stock-card {
+  padding: 20px;
+  background-color: #FFFFFF;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  transition: all 0.2s ease;
+}
+
+.pharmacy-stock-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+}
+
+.card-out-of-stock {
+  opacity: 0.7;
+  background-color: #FAFBFD;
+}
+
+.pharmacy-card-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.pharmacy-meta {
+  flex: 1;
+}
+
+.pharmacy-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.pharmacy-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.verified-badge {
+  font-size: 0.72rem;
+}
+
+.pharmacy-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
+}
+
+.detail-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.distance-badge {
+  font-size: 0.75rem;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+/* Pricing and action */
+.pharmacy-pricing-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.price-display {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.currency-symbol {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.price-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  line-height: 1;
+}
+
+.per-unit {
+  font-size: 0.8rem;
+  color: var(--color-text-light);
+  margin-left: 4px;
+}
+
+.stock-indicator-wrapper {
+  margin-bottom: 4px;
+}
+
+.pharmacy-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.map-locate-btn {
+  font-size: 0.82rem;
+}
+
+.reserve-btn {
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .pharmacy-card-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .pharmacy-pricing-block {
+    align-items: flex-start;
+    width: 100%;
+    padding-top: 14px;
+    border-top: 1px solid #F1F5F9;
+  }
+  .pharmacy-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

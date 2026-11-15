@@ -1,0 +1,329 @@
+.reservation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.res-card-section {
+  background-color: #F8FAFC;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+}
+
+.res-medicine-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.res-med-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.res-med-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.res-med-generic {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.res-rx-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #B45309;
+  background-color: #FEF3C7;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+/* Pharmacy details mini */
+.res-pharmacy-section {
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pharmacy-header-mini {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  color: var(--color-text-main);
+}
+
+.pharmacy-addr-mini, .pharmacy-hours-mini {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  color: var(--color-text-muted);
+}
+
+/* Quantity Block */
+.res-quantity-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid #F1F5F9;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.res-qty-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.qty-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.btn-step {
+  background-color: #F8FAFC;
+  border: none;
+  width: 36px;
+  height: 36px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s;
+}
+
+.btn-step:hover:not(:disabled) {
+  background-color: #E2E8F0;
+}
+
+.btn-step:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.qty-number {
+  min-width: 36px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.qty-stock-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-light);
+}
+
+/* Price breakdown */
+.res-price-breakdown {
+  background-color: #F0FDFA;
+  border: 1px solid #CCFBF1;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.price-calc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.price-calc-row.total-row {
+  border-top: 1px dashed #99F6E4;
+  padding-top: 8px;
+  margin-top: 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.total-highlight {
+  color: var(--color-primary-dark);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.payment-note {
+  font-size: 0.76rem;
+  color: var(--color-primary-dark);
+  margin-top: 4px;
+}
+
+.modal-actions-form {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 10px;
+}
+
+/* Success Confirmation View */
+.reservation-success-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 0;
+}
+
+.success-icon-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: var(--color-accent-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--color-accent);
+}
+
+.success-heading {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  margin-bottom: 6px;
+}
+
+.success-sub {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  max-width: 420px;
+  margin-bottom: 20px;
+}
+
+.reservation-code-card {
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: #FFFFFF;
+  border-radius: var(--radius-md);
+  padding: 16px 24px;
+  width: 100%;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(15, 118, 110, 0.25);
+}
+
+.code-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.code-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin: 4px 0;
+  font-family: var(--font-display);
+}
+
+.code-hint {
+  font-size: 0.78rem;
+  opacity: 0.9;
+}
+
+.order-summary-box {
+  width: 100%;
+  background-color: #F8FAFC;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.summary-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  gap: 12px;
+}
+
+.summary-label {
+  color: var(--color-text-light);
+  font-weight: 500;
+}
+
+.summary-val {
+  color: var(--color-text-main);
+  text-align: right;
+}
+
+.collection-guidelines {
+  background-color: #FEF3C7;
+  border: 1px solid #FDE68A;
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.guidelines-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #92400E;
+  margin-bottom: 6px;
+}
+
+.collection-guidelines ul {
+  padding-left: 20px;
+  font-size: 0.82rem;
+  color: #78350F;
+  line-height: 1.4;
+}
+
+.rx-alert {
+  color: #B45309;
+}
+
+.modal-actions-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+}

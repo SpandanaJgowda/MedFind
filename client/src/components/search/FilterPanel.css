@@ -1,0 +1,183 @@
+.filter-panel {
+  padding: 20px;
+  background-color: #FFFFFF;
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 18px;
+}
+
+.filter-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--color-text-main);
+}
+
+.btn-reset-filters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--color-text-light);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.btn-reset-filters:hover {
+  color: var(--color-primary);
+}
+
+.filter-section {
+  margin-bottom: 22px;
+}
+
+.filter-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  font-size: 0.88rem;
+}
+
+/* Toggle Switch */
+.toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-container input {
+  display: none;
+}
+
+.toggle-switch {
+  width: 42px;
+  height: 24px;
+  background-color: #CBD5E1;
+  border-radius: var(--radius-full);
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background-color: #FFFFFF;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.toggle-container input:checked + .toggle-switch {
+  background-color: var(--color-primary);
+}
+
+.toggle-container input:checked + .toggle-switch::after {
+  transform: translateX(18px);
+}
+
+.toggle-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+/* Category Filter List */
+.category-filter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.category-filter-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.category-filter-item:hover {
+  background-color: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+
+.category-filter-item.active {
+  background-color: var(--color-primary-subtle);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.filter-count {
+  font-size: 0.75rem;
+  background-color: #E2E8F0;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+}
+
+.category-filter-item.active .filter-count {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+/* Dosage Chips */
+.dosage-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-item {
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background-color: #FFFFFF;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chip-item:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.chip-item.active {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #FFFFFF;
+}

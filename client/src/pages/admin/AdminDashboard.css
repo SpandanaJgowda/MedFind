@@ -1,0 +1,168 @@
+.admin-dashboard-page {
+  padding-bottom: 80px;
+}
+
+.admin-banner {
+  background: linear-gradient(180deg, #F0FDFA 0%, #FFFFFF 100%);
+  border-bottom: 1px solid var(--color-border);
+  padding: 40px 0 32px 0;
+}
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #FEF2F2;
+  color: #991B1B;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  margin-bottom: 12px;
+}
+
+.admin-title {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  line-height: 1.2;
+}
+
+.admin-sub {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  max-width: 640px;
+  margin-top: 4px;
+}
+
+.pending-approvals-action-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #FEF3C7;
+  border: 1px solid #FDE68A;
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* Metrics Grid */
+.admin-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.admin-metric-card {
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.admin-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.ametric-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ametric-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.ametric-num {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  line-height: 1;
+}
+
+.ametric-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+/* Shortcuts Grid */
+.admin-shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.admin-shortcut-card {
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.admin-shortcut-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.admin-shortcut-card div {
+  flex: 1;
+}
+
+.admin-shortcut-card strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--color-text-main);
+  margin-bottom: 2px;
+}
+
+.admin-shortcut-card p {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+@media (max-width: 1200px) {
+  .admin-metrics-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .admin-shortcuts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-metrics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .admin-shortcuts-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,250 @@
+.auth-page-container {
+  min-height: calc(100vh - 72px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: linear-gradient(180deg, #F0FDFA 0%, #F8FAFC 100%);
+}
+
+.auth-card-box {
+  background-color: #FFFFFF;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-xl);
+  padding: 40px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.register-box {
+  max-width: 540px;
+}
+
+.pharmacy-register-box {
+  max-width: 720px;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.auth-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  margin-bottom: 16px;
+}
+
+.auth-title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  margin-bottom: 6px;
+}
+
+.auth-subtitle {
+  font-size: 0.92rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* Demo Accounts Panel */
+.demo-accounts-panel {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 24px;
+}
+
+.demo-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #92400E;
+  margin-bottom: 8px;
+}
+
+.demo-buttons-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.btn-demo-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #FCD34D;
+  background-color: #FFFFFF;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-demo-pill:hover {
+  background-color: #FEF3C7;
+}
+
+.role-pat { color: var(--color-primary); }
+.role-pharm { color: var(--color-secondary); }
+.role-adm { color: #DC2626; }
+
+/* Form Elements */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-section-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-primary);
+  margin-top: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-left-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--color-text-light);
+  pointer-events: none;
+}
+
+.input-with-icon .form-input {
+  padding-left: 42px;
+}
+
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-row-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.password-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-submit-btn {
+  margin-top: 8px;
+  padding: 12px;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.auth-footer-links {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.auth-link {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  margin: 12px 0;
+  color: var(--color-text-light);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.auth-divider::before, .auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.auth-divider::before { margin-right: 12px; }
+.auth-divider::after { margin-left: 12px; }
+
+/* Pharmacy Approval Notice Banner */
+.approval-notice-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background-color: #FEF3C7;
+  border: 1px solid #FDE68A;
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.notice-icon {
+  color: #92400E;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notice-text {
+  font-size: 0.82rem;
+  color: #78350F;
+  line-height: 1.4;
+}
+
+.pharmacy-reg-success {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.pharmacy-reg-success h3 {
+  font-size: 1.4rem;
+  color: var(--color-text-main);
+  margin: 12px 0 8px 0;
+}
+
+.pharmacy-reg-success p {
+  font-size: 0.92rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.reg-hint {
+  font-size: 0.84rem;
+  color: var(--color-text-light);
+  margin-bottom: 24px;
+}
+
+@media (max-width: 640px) {
+  .form-row-2col, .form-row-3col {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
