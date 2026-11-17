@@ -19,6 +19,14 @@ import { reservationService, pharmacyService, medicineService } from '../../serv
 import SearchBar from '../../components/search/SearchBar';
 import './PatientDashboard.css';
 
+function getSavedLocation() {
+  try {
+    return JSON.parse(localStorage.getItem('medifind_location') || 'null');
+  } catch (error) {
+    return null;
+  }
+}
+
 export default function PatientDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -27,19 +35,20 @@ export default function PatientDashboard() {
   const [nearbyPharmacies, setNearbyPharmacies] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [patientLocation, setPatientLocation] = useState(getSavedLocation);
+  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
+  const [nearbyError, setNearbyError] = useState('');
 
   useEffect(() => {
     async function loadDashboardData() {
       setIsLoading(true);
       try {
-        const [resRes, pharmRes, searchRes] = await Promise.all([
+        const [resRes, searchRes] = await Promise.all([
           reservationService.getPatientReservations({ status: 'all' }),
-          pharmacyService.getNearby({ limit: 4 }),
           medicineService.getRecentSearches()
         ]);
 
         if (resRes.data.success) setReservations(resRes.data.data || []);
-        if (pharmRes.data.success) setNearbyPharmacies(resRes.data.data ? pharmRes.data.data.slice(0, 4) : []);
         if (searchRes.data.success) setRecentSearches(searchRes.data.data || []);
       } catch (err) {
         console.error('Patient dashboard loading error:', err);
@@ -50,6 +59,55 @@ export default function PatientDashboard() {
 
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    let isCurrentRequest = true;
+    const hasLocation = Number.isFinite(patientLocation?.latitude) && Number.isFinite(patientLocation?.longitude);
+
+    if (!hasLocation) {
+      setNearbyPharmacies([]);
+      setNearbyError('');
+      setIsLoadingNearby(false);
+      return () => { isCurrentRequest = false; };
+    }
+
+    async function loadNearbyPharmacies() {
+      setIsLoadingNearby(true);
+      setNearbyError('');
+      try {
+        const response = await pharmacyService.getNearby({
+          user_lat: patientLocation.latitude,
+          user_lng: patientLocation.longitude,
+          radius_km: 25,
+          limit: 4
+        });
+        if (isCurrentRequest && response.data.success) {
+          setNearbyPharmacies(response.data.data || []);
+        }
+      } catch (error) {
+        if (isCurrentRequest) {
+          setNearbyPharmacies([]);
+          setNearbyError(error.response?.data?.message || 'Could not load nearby pharmacies.');
+        }
+      } finally {
+        if (isCurrentRequest) setIsLoadingNearby(false);
+      }
+    }
+
+    loadNearbyPharmacies();
+    return () => { isCurrentRequest = false; };
+  }, [patientLocation?.latitude, patientLocation?.longitude]);
+
+  const handleLocationChange = ({ q, city, user_lat, user_lng }) => {
+    const nextLocation = { label: city, latitude: user_lat, longitude: user_lng };
+    localStorage.setItem('medifind_location', JSON.stringify(nextLocation));
+    setPatientLocation(nextLocation);
+    setNearbyPharmacies([]);
+    if (q) {
+      const params = new URLSearchParams({ q, city, user_lat: String(user_lat), user_lng: String(user_lng) });
+      navigate(`/medicines?${params}`);
+    }
+  };
 
   const activeReservations = reservations.filter(
     r => ['Pending', 'Confirmed', 'Ready for Pickup'].includes(r.status)
@@ -87,13 +145,20 @@ export default function PatientDashboard() {
               <div className="welcome-tag">PATIENT PORTAL</div>
               <h1 className="welcome-name">Welcome back, {user?.name}!</h1>
               <p className="welcome-sub">
-                Find available medicines in Bengaluru pharmacies, compare prices, and manage your pickup reservations.
+                {patientLocation?.label
+                  ? `Find available medicines near ${patientLocation.label}, compare prices, and manage your pickup reservations.`
+                  : 'Choose your location to find nearby pharmacies, compare prices, and manage your pickup reservations.'}
               </p>
             </div>
           </div>
 
           <div className="dashboard-search-container">
-            <SearchBar placeholder="Search by brand name, generic formulation, or active ingredient..." />
+            <SearchBar
+              initialCity={patientLocation?.label || ''}
+              initialCoordinates={patientLocation}
+              onSearch={handleLocationChange}
+              placeholder="Search by brand name, generic formulation, or active ingredient..."
+            />
           </div>
         </div>
       </section>
@@ -215,12 +280,22 @@ export default function PatientDashboard() {
               <div className="card-header-flex">
                 <div>
                   <h3 className="card-heading">Nearby Pharmacies</h3>
-                  <p className="card-subheading">Verified chemists in Bengaluru</p>
+                  <p className="card-subheading">
+                    {patientLocation?.label ? `Approved stores within 25 km of ${patientLocation.label}` : 'Choose a location to see nearby approved stores'}
+                  </p>
                 </div>
               </div>
 
               <div className="dash-pharmacies-list">
-                {nearbyPharmacies.slice(0, 3).map((pharm) => (
+                {isLoadingNearby ? (
+                  <p className="card-subheading">Finding pharmacies near your location...</p>
+                ) : nearbyError ? (
+                  <p className="card-subheading">{nearbyError}</p>
+                ) : !patientLocation ? (
+                  <p className="card-subheading">Use the location pin for live location or enter a city above.</p>
+                ) : nearbyPharmacies.length === 0 ? (
+                  <p className="card-subheading">No approved pharmacies were found within 25 km of {patientLocation.label}. Try another location or check back as local stores join MediFind.</p>
+                ) : nearbyPharmacies.slice(0, 3).map((pharm) => (
                   <div key={pharm.id} className="dash-pharmacy-item">
                     <div className="dash-pharm-info">
                       <h4 className="dash-pharm-name">{pharm.name}</h4>

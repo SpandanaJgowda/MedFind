@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Pill, Building2, Store, CheckCircle2, AlertTriangle, ArrowRight, FileText } from 'lucide-react';
+import { Pill, Building2, Store, CheckCircle2, AlertTriangle, ArrowRight, FileText, MapPin } from 'lucide-react';
 import './MedicineCard.css';
 
-export default function MedicineCard({ medicine, locationSearch = '' }) {
+export default function MedicineCard({ medicine, hasLocation = false, locationSearch = '' }) {
   const hasStock = medicine.pharmacies_in_stock > 0;
   const isSinglePrice = medicine.min_price === medicine.max_price;
 
@@ -52,7 +52,12 @@ export default function MedicineCard({ medicine, locationSearch = '' }) {
 
       <div className="med-card-footer">
         <div className="med-availability-block">
-          {hasStock ? (
+          {!hasLocation ? (
+            <div className="stock-status">
+              <MapPin size={14} />
+              <span>Select a location to see nearby stock and pricing</span>
+            </div>
+          ) : hasStock ? (
             <>
               <div className="price-tag">
                 <span className="price-label">Price from:</span>

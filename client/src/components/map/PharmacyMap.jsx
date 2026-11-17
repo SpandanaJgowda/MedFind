@@ -4,7 +4,7 @@ import './PharmacyMap.css';
 
 export default function PharmacyMap({
   pharmacies = [],
-  userLocation = { latitude: 12.9716, longitude: 77.5946 },
+  userLocation = null,
   selectedPharmacyId = null,
   onSelectPharmacy,
   height = '420px'
@@ -14,11 +14,11 @@ export default function PharmacyMap({
   const markersGroupRef = useRef(null);
 
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    if (!mapContainerRef.current || !Number.isFinite(userLocation?.latitude) || !Number.isFinite(userLocation?.longitude)) return;
 
     // Initialize Map if not already initialized
     if (!mapInstanceRef.current) {
-      const center = [userLocation.latitude || 12.9716, userLocation.longitude || 77.5946];
+      const center = [userLocation.latitude, userLocation.longitude];
       const map = L.map(mapContainerRef.current, {
         center,
         zoom: 13,
@@ -50,7 +50,7 @@ export default function PharmacyMap({
     });
 
     const userMarker = L.marker([userLocation.latitude, userLocation.longitude], { icon: userIcon })
-      .bindPopup(`<strong>Your Search Location</strong><br/>Bengaluru Reference Center`);
+      .bindPopup('<strong>Your Selected Location</strong>');
     markersGroup.addLayer(userMarker);
 
     // 2. Add Pharmacy Markers

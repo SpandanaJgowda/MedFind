@@ -5,7 +5,6 @@ import { medicineService } from '../../services/api';
 import './SearchBar.css';
 
 const LOCATION_PREFERENCE_KEY = 'medifind_location';
-const DEFAULT_LOCATION = { label: 'Bengaluru', latitude: 12.9716, longitude: 77.5946 };
 
 function readLocationPreference() {
   try {
@@ -24,7 +23,7 @@ export default function SearchBar({
 }) {
   const navigate = useNavigate();
   const savedLocation = readLocationPreference();
-  const startingCity = initialCity || savedLocation?.label || DEFAULT_LOCATION.label;
+  const startingCity = initialCity || savedLocation?.label || '';
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(startingCity);
   const [coordinates, setCoordinates] = useState(() => {
@@ -36,7 +35,6 @@ export default function SearchBar({
       Number.isFinite(savedLocation.latitude) &&
       Number.isFinite(savedLocation.longitude)
     ) return savedLocation;
-    if (startingCity.toLowerCase() === DEFAULT_LOCATION.label.toLowerCase()) return DEFAULT_LOCATION;
     return null;
   });
   const [suggestions, setSuggestions] = useState([]);
@@ -217,7 +215,7 @@ export default function SearchBar({
         const selectedCoordinates = { label, latitude, longitude };
         setCity(label);
         setCoordinates(selectedCoordinates);
-        dispatchSearch(query, label, selectedCoordinates, null, false);
+        dispatchSearch(query, label, selectedCoordinates);
         setIsLocating(false);
       },
       () => {

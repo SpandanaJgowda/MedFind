@@ -27,6 +27,12 @@ async function registerPatient(req, res) {
       return res.status(400).json({ success: false, message: 'Passwords do not match.' });
     }
 
+    const lat = Number.parseFloat(latitude);
+    const lng = Number.parseFloat(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ success: false, message: 'A valid store latitude and longitude are required.' });
+    }
+
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -123,10 +129,6 @@ async function registerPharmacy(req, res) {
 
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
-
-    // Default coordinates if not provided (Bengaluru area approx)
-    const lat = latitude ? parseFloat(latitude) : 12.9716 + (Math.random() - 0.5) * 0.08;
-    const lng = longitude ? parseFloat(longitude) : 77.5946 + (Math.random() - 0.5) * 0.08;
 
     // Create user with transaction
     const conn = await db.getConnection();

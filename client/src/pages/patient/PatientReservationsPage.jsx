@@ -18,6 +18,7 @@ import {
 import { reservationService } from '../../services/api';
 import Modal from '../../components/common/Modal';
 import Alert from '../../components/common/Alert';
+import PatientWorkflowUpdates from '../../components/reservations/PatientWorkflowUpdates';
 import './PatientDashboard.css';
 
 export default function PatientReservationsPage() {
@@ -105,6 +106,8 @@ export default function PatientReservationsPage() {
       )}
       {error && <Alert type="danger" message={error} onClose={() => setError(null)} />}
 
+      <PatientWorkflowUpdates />
+
       {/* Filter Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
         {[
@@ -141,7 +144,7 @@ export default function PatientReservationsPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           {reservations.map((res) => {
-            const canCancel = ['Pending', 'Confirmed'].includes(res.status);
+            const canCancel = ['Pending', 'Confirmed', 'Ready for Pickup'].includes(res.status);
 
             return (
               <div key={res.id} className="card" style={{ padding: '24px', position: 'relative' }}>

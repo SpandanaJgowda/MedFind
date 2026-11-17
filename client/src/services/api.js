@@ -77,6 +77,27 @@ export const reservationService = {
   trackByCode: (code) => api.get(`/reservations/track/${code}`)
 };
 
+export const procurementService = {
+  create: (data) => api.post('/procurement', data),
+  getPatientRequests: () => api.get('/procurement/my'),
+  getPharmacyRequests: () => api.get('/procurement/pharmacy'),
+  updateStatus: (id, data) => api.put(`/procurement/${id}/status`, data)
+};
+
+export const notificationService = {
+  getMine: () => api.get('/notifications'),
+  markRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllRead: () => api.put('/notifications/read-all')
+};
+
+export const prescriptionService = {
+  upload: (formData) => api.post('/prescriptions', formData),
+  getPatientPrescriptions: (params) => api.get('/prescriptions/my', { params }),
+  getPharmacyPrescriptions: () => api.get('/prescriptions/pharmacy'),
+  getFile: (id) => api.get(`/prescriptions/${id}/file`, { responseType: 'blob' }),
+  review: (id, data) => api.put(`/prescriptions/${id}/review`, data)
+};
+
 // Admin Services
 export const adminService = {
   getStats: () => api.get('/admin/stats'),

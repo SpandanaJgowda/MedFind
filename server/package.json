@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
+    "db:migrate": "node src/database/migrate.js",
     "db:init": "node src/database/init.js",
     "db:seed": "node src/database/seed.js"
   },
@@ -16,6 +17,7 @@
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "multer": "^2.5.0",
     "mysql2": "^3.11.3"
   }
 }

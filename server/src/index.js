@@ -9,8 +9,14 @@ const authRoutes = require('./routes/authRoutes');
 const medicineRoutes = require('./routes/medicineRoutes');
 const pharmacyRoutes = require('./routes/pharmacyRoutes');
 const reservationRoutes = require('./routes/reservationRoutes');
+const procurementRoutes = require('./routes/procurementRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const prescriptionRoutes = require('./routes/prescriptionRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const migrate = require('./database/migrate');
+const { expireDueReservations } = require('./controllers/reservationController');
+const { expireReadyRequests } = require('./controllers/procurementController');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -30,6 +36,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/medicines', medicineRoutes);
 app.use('/api/pharmacies', pharmacyRoutes);
 app.use('/api/reservations', reservationRoutes);
+app.use('/api/procurement', procurementRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
@@ -61,10 +70,23 @@ app.use((err, req, res, next) => {
 
 // Start listening if run directly
 if (require.main === module) {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 MediFind Backend Server running on http://localhost:${PORT}`);
-    console.log(`🩺 Health check available at http://localhost:${PORT}/api/health`);
-  });
+  migrate()
+    .then(() => {
+      Promise.all([expireDueReservations(), expireReadyRequests()])
+        .catch(error => console.error('Initial pickup expiry sweep failed:', error));
+      setInterval(() => {
+        Promise.all([expireDueReservations(), expireReadyRequests()])
+          .catch(error => console.error('Pickup expiry sweep failed:', error));
+      }, 60 * 1000).unref();
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 MediFind Backend Server running on http://localhost:${PORT}`);
+        console.log(`🩺 Health check available at http://localhost:${PORT}/api/health`);
+      });
+    })
+    .catch(error => {
+      console.error('Unable to start MediFind before database migrations completed:', error);
+      process.exit(1);
+    });
 }
 
 module.exports = app;

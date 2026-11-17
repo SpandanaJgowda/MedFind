@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Pill, Store, User, Mail, Phone, Lock, MapPin, Clock, FileText, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { geocodeIndianAddress } from '../../services/location';
 import Alert from '../../components/common/Alert';
 import './Auth.css';
 
@@ -16,9 +17,9 @@ export default function PharmacyRegisterPage() {
     phone: '',
     licenseNumber: '',
     address: '',
-    city: 'Bengaluru',
-    state: 'Karnataka',
-    pincode: '560001',
+    city: '',
+    state: '',
+    pincode: '',
     openingHours: '08:00 AM - 10:00 PM',
     password: '',
     confirmPassword: ''
@@ -44,14 +45,15 @@ export default function PharmacyRegisterPage() {
     setIsLoading(true);
 
     try {
-      const res = await registerPharmacy(formData);
+      const coordinates = await geocodeIndianAddress(formData);
+      const res = await registerPharmacy({ ...formData, ...coordinates });
       if (res.success) {
         setRegisteredSuccess(true);
       } else {
         setError(res.message || 'Registration failed.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Server error during pharmacy registration.');
+      setError(err.response?.data?.message || err.message || 'Server error during pharmacy registration.');
     } finally {
       setIsLoading(false);
     }
@@ -178,6 +180,7 @@ export default function PharmacyRegisterPage() {
             </div>
 
             <div className="form-section-title">2. Location & Operating Hours</div>
+            <p className="form-help-text">We locate the store from this address so patients see accurate nearby results.</p>
 
             <div className="form-group">
               <label className="form-label">Complete Street Address</label>

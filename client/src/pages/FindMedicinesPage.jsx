@@ -22,7 +22,7 @@ export default function FindMedicinesPage() {
   const queryParam = searchParams.get('q') || '';
   const categoryParam = searchParams.get('category') || '';
   const savedLocation = getSavedLocation();
-  const cityParam = searchParams.get('city') || savedLocation?.label || 'Bengaluru';
+  const cityParam = searchParams.get('city') || savedLocation?.label || '';
   const savedCoordinatesMatch = savedLocation?.label?.toLowerCase() === cityParam.toLowerCase();
   const latitudeParam = searchParams.get('user_lat') || (savedCoordinatesMatch ? String(savedLocation.latitude) : '');
   const longitudeParam = searchParams.get('user_lng') || (savedCoordinatesMatch ? String(savedLocation.longitude) : '');
@@ -82,6 +82,10 @@ export default function FindMedicinesPage() {
           page,
           limit: 12
         };
+        if (initialCoordinates && Number.isFinite(initialCoordinates.latitude) && Number.isFinite(initialCoordinates.longitude)) {
+          params.user_lat = initialCoordinates.latitude;
+          params.user_lng = initialCoordinates.longitude;
+        }
 
         const res = await medicineService.search(params);
         if (res.data.success) {
@@ -97,7 +101,7 @@ export default function FindMedicinesPage() {
     }
 
     fetchMedicines();
-  }, [queryParam, selectedCategory, selectedDosageForm, inStockOnly, sortBy, page]);
+  }, [queryParam, selectedCategory, selectedDosageForm, inStockOnly, sortBy, page, latitudeParam, longitudeParam]);
 
   // Search trigger from searchbar
   const handleSearchSubmit = ({ q, city, user_lat, user_lng }) => {
@@ -256,6 +260,7 @@ export default function FindMedicinesPage() {
                   <MedicineCard
                     key={medicine.id}
                     medicine={medicine}
+                    hasLocation={Boolean(initialCoordinates && Number.isFinite(initialCoordinates.latitude) && Number.isFinite(initialCoordinates.longitude))}
                     locationSearch={locationSearch ? `?${locationSearch}` : ''}
                   />
                 ))}

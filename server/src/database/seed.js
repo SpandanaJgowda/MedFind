@@ -611,14 +611,23 @@ async function seed() {
     ] : [];
 
     for (const r of reservationsData) {
+      const needsHold = ['Confirmed', 'Ready for Pickup'].includes(r[7]);
+      const holdDurationHours = needsHold ? 24 : null;
+      const pickupDeadline = needsHold ? new Date(Date.now() + holdDurationHours * 60 * 60 * 1000) : null;
       await conn.query(
         `INSERT INTO reservations (
           reservation_code, patient_id, pharmacy_id, medicine_id,
           quantity, unit_price, total_price, status, patient_notes,
-          pharmacy_notes, reserved_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        r
+          pharmacy_notes, reserved_at, hold_duration_hours, pickup_deadline
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [...r, holdDurationHours, pickupDeadline]
       );
+      if (needsHold) {
+        await conn.query(
+          'UPDATE pharmacy_inventory SET reserved_quantity = reserved_quantity + ? WHERE pharmacy_id = ? AND medicine_id = ? AND quantity - reserved_quantity >= ?',
+          [r[4], r[2], r[3], r[4]]
+        );
+      }
     }
     console.log(`Seeded ${reservationsData.length} sample reservations.`);
 

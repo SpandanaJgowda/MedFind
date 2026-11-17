@@ -14,6 +14,7 @@ import {
 import { reservationService } from '../../services/api';
 import Alert from '../../components/common/Alert';
 import Modal from '../../components/common/Modal';
+import PharmacyWorkflowPanels from '../../components/reservations/PharmacyWorkflowPanels';
 import './PharmacyDashboard.css';
 
 export default function PharmacyReservationsPage() {
@@ -77,6 +78,8 @@ export default function PharmacyReservationsPage() {
       </div>
 
       {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
+
+      <PharmacyWorkflowPanels />
 
       {/* Filter Chips */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
@@ -203,23 +206,20 @@ export default function PharmacyReservationsPage() {
                 )}
 
                 {r.status === 'Confirmed' && (
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => handleUpdateStatus(r.id, 'Ready for Pickup')}
-                  >
-                    Mark Ready for Pickup
-                  </button>
+                  <>
+                    <button className="btn btn-ghost btn-sm" onClick={() => handleUpdateStatus(r.id, 'Cancelled', 'Cancelled by pharmacy; held stock released.')}>Cancel Booking</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => handleUpdateStatus(r.id, 'Ready for Pickup')}>Mark Ready for Pickup</button>
+                  </>
                 )}
 
                 {r.status === 'Ready for Pickup' && (
-                  <button
-                    className="btn btn-primary btn-sm"
-                    style={{ backgroundColor: '#059669', borderColor: '#059669' }}
-                    onClick={() => handleUpdateStatus(r.id, 'Completed')}
-                  >
-                    <PackageCheck size={16} />
-                    <span>Dispense & Complete</span>
-                  </button>
+                  <>
+                    <button className="btn btn-ghost btn-sm" onClick={() => handleUpdateStatus(r.id, 'Cancelled', 'Cancelled by pharmacy; held stock released.')}>Cancel Booking</button>
+                    <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#059669', borderColor: '#059669' }} onClick={() => handleUpdateStatus(r.id, 'Completed')}>
+                      <PackageCheck size={16} />
+                      <span>Dispense & Complete</span>
+                    </button>
+                  </>
                 )}
               </div>
             </div>

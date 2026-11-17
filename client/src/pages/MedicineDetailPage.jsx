@@ -17,12 +17,21 @@ import {
   ChevronRight,
   Filter
 } from 'lucide-react';
-import { medicineService } from '../services/api';
+import { medicineService, pharmacyService } from '../services/api';
 import PharmacyStockCard from '../components/search/PharmacyStockCard';
 import PharmacyMap from '../components/map/PharmacyMap';
 import ReservationModal from '../components/reservations/ReservationModal';
+import ProcurementRequestModal from '../components/reservations/ProcurementRequestModal';
 import { useAuth } from '../context/AuthContext';
 import './MedicineDetailPage.css';
+
+function readSavedLocation() {
+  try {
+    return JSON.parse(localStorage.getItem('medifind_location') || 'null');
+  } catch (error) {
+    return null;
+  }
+}
 
 export default function MedicineDetailPage() {
   const { id } = useParams();
@@ -30,14 +39,25 @@ export default function MedicineDetailPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const locationParams = new URLSearchParams(location.search);
+  const savedLocation = readSavedLocation();
+  const requestedCity = locationParams.get('city')?.trim();
   const requestedLatitude = Number.parseFloat(locationParams.get('user_lat'));
   const requestedLongitude = Number.parseFloat(locationParams.get('user_lng'));
-  const referenceLocation = Number.isFinite(requestedLatitude) && Number.isFinite(requestedLongitude)
-    ? { latitude: requestedLatitude, longitude: requestedLongitude }
-    : { latitude: 12.9716, longitude: 77.5946 };
+  const hasRequestedLocation = locationParams.has('user_lat') || locationParams.has('user_lng');
+  const savedLatitude = Number.parseFloat(savedLocation?.latitude);
+  const savedLongitude = Number.parseFloat(savedLocation?.longitude);
+  const referenceLocation = hasRequestedLocation
+    ? Number.isFinite(requestedLatitude) && Number.isFinite(requestedLongitude)
+      ? { latitude: requestedLatitude, longitude: requestedLongitude, label: locationParams.get('city') || '' }
+      : null
+    : (!requestedCity || requestedCity.toLowerCase() === savedLocation?.label?.toLowerCase()) &&
+      Number.isFinite(savedLatitude) && Number.isFinite(savedLongitude)
+      ? { latitude: savedLatitude, longitude: savedLongitude, label: savedLocation.label }
+      : null;
 
   const [medicine, setMedicine] = useState(null);
   const [pharmacies, setPharmacies] = useState([]);
+  const [nearbyStores, setNearbyStores] = useState([]);
   const [verifiedAlternatives, setVerifiedAlternatives] = useState([]);
   const [userLocation, setUserLocation] = useState(referenceLocation);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,6 +67,7 @@ export default function MedicineDetailPage() {
   const [pharmacyFilter, setPharmacyFilter] = useState('all'); // 'all', 'in_stock', 'nearest', 'cheapest'
   const [selectedPharmacyForModal, setSelectedPharmacyForModal] = useState(null);
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
+  const [isProcurementModalOpen, setIsProcurementModalOpen] = useState(false);
   const [highlightedPharmacyId, setHighlightedPharmacyId] = useState(null);
 
   useEffect(() => {
@@ -56,19 +77,32 @@ export default function MedicineDetailPage() {
       setError(null);
 
       try {
-        const res = await medicineService.getById(id, {
+        const res = await medicineService.getById(id, referenceLocation ? {
           user_lat: referenceLocation.latitude,
           user_lng: referenceLocation.longitude
-        });
+        } : undefined);
 
         if (res.data.success) {
           setMedicine(res.data.data);
           setPharmacies(res.data.data.pharmacies || []);
           setVerifiedAlternatives(res.data.data.verifiedAlternatives || []);
-          if (res.data.data.patientReferenceLocation) {
-            setUserLocation(res.data.data.patientReferenceLocation);
+          setUserLocation(res.data.data.patientReferenceLocation || null);
+          if (referenceLocation) {
+            try {
+              const nearbyResponse = await pharmacyService.getNearby({
+                user_lat: referenceLocation.latitude,
+                user_lng: referenceLocation.longitude,
+                radius_km: 25,
+                limit: 100,
+                medicine_id: id
+              });
+              setNearbyStores(nearbyResponse.data.data || []);
+            } catch (nearbyError) {
+              console.error('Failed to load nearby pharmacies for procurement:', nearbyError);
+              setNearbyStores([]);
+            }
           } else {
-            setUserLocation(referenceLocation);
+            setNearbyStores([]);
           }
         } else {
           setError('Medicine details not found.');
@@ -82,7 +116,7 @@ export default function MedicineDetailPage() {
     }
 
     loadMedicine();
-  }, [id, requestedLatitude, requestedLongitude]);
+  }, [id, referenceLocation?.latitude, referenceLocation?.longitude]);
 
   useEffect(() => {
     const pendingReservation = location.state?.resumeReservation;
@@ -169,6 +203,9 @@ export default function MedicineDetailPage() {
   }
 
   const filteredPharmacies = getFilteredPharmacies();
+  const procurementPharmacies = nearbyStores.filter(store =>
+    !store.specificMedicineStock || store.specificMedicineStock.quantity <= 0
+  );
   const inStockCount = pharmacies.filter(p => p.quantity > 0).length;
 
   return (
@@ -335,6 +372,11 @@ export default function MedicineDetailPage() {
                 Compare prices, check distance, and reserve your medication for quick in-store pickup.
               </p>
             </div>
+            {procurementPharmacies.length > 0 && (
+              <button className="btn btn-outline btn-sm" onClick={() => setIsProcurementModalOpen(true)}>
+                Request unavailable medicine
+              </button>
+            )}
 
             {/* Filter Pills */}
             <div className="pharmacy-filters-row">
@@ -371,10 +413,13 @@ export default function MedicineDetailPage() {
               {filteredPharmacies.length === 0 ? (
                 <div className="card text-center" style={{ padding: '40px 20px' }}>
                   <AlertTriangle size={36} className="text-warning" style={{ margin: '0 auto 12px auto' }} />
-                  <h4>No Registered Pharmacies Nearby</h4>
+                  <h4>{userLocation ? 'No Registered Pharmacies Nearby' : 'Choose a Location to Find Pharmacies'}</h4>
                   <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginTop: '6px' }}>
-                    No approved MediFind pharmacies were found within {medicine.nearbyPharmacyRadiusKm || 25} km. Coverage depends on registered pharmacies in your area.
+                    {userLocation
+                      ? `No approved MediFind pharmacies were found within ${medicine.nearbyPharmacyRadiusKm || 25} km. Coverage depends on registered pharmacies in your area.`
+                      : 'Select or detect your location from Find Medicines to see pharmacies and distances near you.'}
                   </p>
+                  {!userLocation && <Link to="/medicines" className="btn btn-primary btn-sm">Choose Location</Link>}
                 </div>
               ) : (
                 filteredPharmacies.map((pharm) => (
@@ -392,13 +437,20 @@ export default function MedicineDetailPage() {
             {/* Right: Interactive OpenStreetMap with Leaflet */}
             <div className="pharmacies-map-side" id="pharmacy-map-section">
               <div className="sticky-map-wrapper">
-                <PharmacyMap
-                  pharmacies={filteredPharmacies}
-                  userLocation={userLocation}
-                  selectedPharmacyId={highlightedPharmacyId}
-                  onSelectPharmacy={(pharm) => handleOpenReserveModal(pharm)}
-                  height="480px"
-                />
+                {userLocation ? (
+                  <PharmacyMap
+                    pharmacies={filteredPharmacies}
+                    userLocation={userLocation}
+                    selectedPharmacyId={highlightedPharmacyId}
+                    onSelectPharmacy={(pharm) => handleOpenReserveModal(pharm)}
+                    height="480px"
+                  />
+                ) : (
+                  <div className="card text-center" style={{ padding: '40px 20px' }}>
+                    <p>Select a location to center the pharmacy map.</p>
+                    <Link to="/medicines" className="btn btn-outline btn-sm">Choose Location</Link>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -412,17 +464,14 @@ export default function MedicineDetailPage() {
           onClose={() => setIsReservationModalOpen(false)}
           medicine={medicine}
           pharmacy={selectedPharmacyForModal}
-          onSuccess={(res) => {
-            // Update local stock count smoothly
-            setPharmacies(prev =>
-              prev.map(p => {
-                if (p.pharmacyId === selectedPharmacyForModal.pharmacyId) {
-                  return { ...p, quantity: Math.max(0, p.quantity - res.quantity) };
-                }
-                return p;
-              })
-            );
-          }}
+        />
+      )}
+      {isProcurementModalOpen && (
+        <ProcurementRequestModal
+          isOpen={isProcurementModalOpen}
+          onClose={() => setIsProcurementModalOpen(false)}
+          medicine={medicine}
+          pharmacies={procurementPharmacies}
         />
       )}
     </div>

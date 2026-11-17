@@ -29,6 +29,31 @@ async function searchMedicines(req, res) {
       page = 1
     } = req.query;
 
+    const hasLatitude = user_lat !== undefined && user_lat !== '';
+    const hasLongitude = user_lng !== undefined && user_lng !== '';
+    const clientLat = hasLatitude ? Number.parseFloat(user_lat) : null;
+    const clientLng = hasLongitude ? Number.parseFloat(user_lng) : null;
+    const hasLocation = Number.isFinite(clientLat) && Number.isFinite(clientLng) &&
+      clientLat >= -90 && clientLat <= 90 && clientLng >= -180 && clientLng <= 180;
+    const radiusParam = req.query.radius_km === undefined ? DEFAULT_PHARMACY_RADIUS_KM : Number.parseFloat(req.query.radius_km);
+
+    if (hasLatitude !== hasLongitude || ((hasLatitude || hasLongitude) && !hasLocation)) {
+      return res.status(400).json({ success: false, message: 'Provide a valid latitude and longitude together to find nearby availability.' });
+    }
+    if (!Number.isFinite(radiusParam) || radiusParam <= 0) {
+      return res.status(400).json({ success: false, message: 'Search radius must be a positive number of kilometers.' });
+    }
+
+    const radiusKm = Math.min(radiusParam, 100);
+    const locationParams = hasLocation ? [clientLat, clientLat, clientLng, radiusKm] : [];
+    const locationJoinCondition = hasLocation
+      ? `AND (6371 * 2 * ASIN(SQRT(LEAST(1, GREATEST(0,
+          POWER(SIN(RADIANS(p.latitude - ?) / 2), 2) +
+          COS(RADIANS(?)) * COS(RADIANS(p.latitude)) * POWER(SIN(RADIANS(p.longitude - ?) / 2), 2)
+        ))))) <= ?`
+      : 'AND 1 = 0';
+    const pharmacyJoinSql = `LEFT JOIN pharmacies p ON pi.pharmacy_id = p.id AND p.approval_status = 'approved' ${locationJoinCondition}`;
+
     const trimmedQuery = q.trim();
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
@@ -83,15 +108,15 @@ async function searchMedicines(req, res) {
         c.id AS category_id,
         c.name AS category_name,
         c.slug AS category_slug,
-        COUNT(DISTINCT pi.pharmacy_id) AS total_pharmacies_count,
-        COALESCE(SUM(CASE WHEN p.approval_status = 'approved' THEN pi.quantity ELSE 0 END), 0) AS total_available_stock,
-        COALESCE(MIN(CASE WHEN p.approval_status = 'approved' AND pi.quantity > 0 THEN pi.price ELSE NULL END), 0) AS min_price,
-        COALESCE(MAX(CASE WHEN p.approval_status = 'approved' AND pi.quantity > 0 THEN pi.price ELSE NULL END), 0) AS max_price,
-        COUNT(DISTINCT CASE WHEN p.approval_status = 'approved' AND pi.quantity > 0 THEN pi.pharmacy_id END) AS pharmacies_in_stock
+        COUNT(DISTINCT CASE WHEN p.id IS NOT NULL THEN pi.pharmacy_id END) AS total_pharmacies_count,
+        COALESCE(SUM(CASE WHEN p.approval_status = 'approved' THEN pi.quantity - pi.reserved_quantity ELSE 0 END), 0) AS total_available_stock,
+        COALESCE(MIN(CASE WHEN p.approval_status = 'approved' AND pi.quantity - pi.reserved_quantity > 0 THEN pi.price ELSE NULL END), 0) AS min_price,
+        COALESCE(MAX(CASE WHEN p.approval_status = 'approved' AND pi.quantity - pi.reserved_quantity > 0 THEN pi.price ELSE NULL END), 0) AS max_price,
+        COUNT(DISTINCT CASE WHEN p.approval_status = 'approved' AND pi.quantity - pi.reserved_quantity > 0 THEN pi.pharmacy_id END) AS pharmacies_in_stock
       FROM medicines m
       LEFT JOIN categories c ON m.category_id = c.id
       LEFT JOIN pharmacy_inventory pi ON m.id = pi.medicine_id
-      LEFT JOIN pharmacies p ON pi.pharmacy_id = p.id AND p.approval_status = 'approved'
+      ${pharmacyJoinSql}
       WHERE ${whereSql}
       GROUP BY m.id
       ${in_stock_only === 'true' ? 'HAVING pharmacies_in_stock > 0' : ''}
@@ -108,9 +133,7 @@ async function searchMedicines(req, res) {
       LIMIT ? OFFSET ?
     `;
 
-    params.push(parseInt(limit, 10), parseInt(offset, 10));
-
-    const medicines = await db.query(sql, params);
+    const medicines = await db.query(sql, [...locationParams, ...params, parseInt(limit, 10), parseInt(offset, 10)]);
 
     // Count total matches
     const countSql = `
@@ -118,12 +141,12 @@ async function searchMedicines(req, res) {
       FROM medicines m
       LEFT JOIN categories c ON m.category_id = c.id
       LEFT JOIN pharmacy_inventory pi ON m.id = pi.medicine_id
-      LEFT JOIN pharmacies p ON pi.pharmacy_id = p.id AND p.approval_status = 'approved'
+      ${pharmacyJoinSql}
       WHERE ${whereSql}
-      ${in_stock_only === 'true' ? 'HAVING COUNT(DISTINCT CASE WHEN p.approval_status = \'approved\' AND pi.quantity > 0 THEN pi.pharmacy_id END) > 0' : ''}
+      ${in_stock_only === 'true' ? 'HAVING COUNT(DISTINCT CASE WHEN p.approval_status = \'approved\' AND pi.quantity - pi.reserved_quantity > 0 THEN pi.pharmacy_id END) > 0' : ''}
     `;
 
-    const countParams = params.slice(0, params.length - 2);
+    const countParams = [...locationParams, ...params];
     const countRes = await db.query(countSql, countParams);
     const totalCount = countRes.length > 0 ? (countRes[0].total || countRes.length) : 0;
 
@@ -203,10 +226,16 @@ async function getMedicineById(req, res) {
   try {
     const { id } = req.params;
     const { user_lat, user_lng } = req.query;
+    const hasLatitude = user_lat !== undefined && user_lat !== '';
+    const hasLongitude = user_lng !== undefined && user_lng !== '';
+    const clientLat = hasLatitude ? Number.parseFloat(user_lat) : null;
+    const clientLng = hasLongitude ? Number.parseFloat(user_lng) : null;
+    const hasLocation = Number.isFinite(clientLat) && Number.isFinite(clientLng) &&
+      clientLat >= -90 && clientLat <= 90 && clientLng >= -180 && clientLng <= 180;
 
-    // Default reference coordinates: Bengaluru city center (MG Road) if patient coords not provided
-    const clientLat = user_lat ? parseFloat(user_lat) : 12.9716;
-    const clientLng = user_lng ? parseFloat(user_lng) : 77.5946;
+    if (hasLatitude !== hasLongitude || ((hasLatitude || hasLongitude) && !hasLocation)) {
+      return res.status(400).json({ success: false, message: 'Provide a valid latitude and longitude together to find nearby pharmacies.' });
+    }
 
     // Fetch medicine details
     const medSql = `
@@ -232,7 +261,7 @@ async function getMedicineById(req, res) {
       SELECT 
         pi.id AS inventory_id,
         pi.price,
-        pi.quantity,
+        pi.quantity - pi.reserved_quantity AS quantity,
         pi.min_stock_level,
         pi.last_updated,
         p.id AS pharmacy_id,
@@ -255,7 +284,7 @@ async function getMedicineById(req, res) {
       ORDER BY pi.price ASC
     `;
 
-    const rawPharmacies = await db.query(pharmSql, [id]);
+    const rawPharmacies = hasLocation ? await db.query(pharmSql, [id]) : [];
 
     // Format pharmacies with distance and availability status
     const pharmacies = rawPharmacies.map(pharm => {
@@ -304,6 +333,15 @@ async function getMedicineById(req, res) {
       return a.distanceKm - b.distanceKm;
     });
     const nearbyPharmacies = pharmacies.filter(pharmacy => pharmacy.distanceKm <= DEFAULT_PHARMACY_RADIUS_KM);
+    const alternativeLocationCondition = hasLocation
+      ? `AND (6371 * 2 * ASIN(SQRT(LEAST(1, GREATEST(0,
+          POWER(SIN(RADIANS(p.latitude - ?) / 2), 2) +
+          COS(RADIANS(?)) * COS(RADIANS(p.latitude)) * POWER(SIN(RADIANS(p.longitude - ?) / 2), 2)
+        ))))) <= ?`
+      : 'AND 1 = 0';
+    const alternativeLocationParams = hasLocation
+      ? [clientLat, clientLat, clientLng, DEFAULT_PHARMACY_RADIUS_KM]
+      : [];
 
     // Find Verified Bio-Equivalent Alternatives:
     // Identical active ingredient, strength, and dosage form
@@ -318,20 +356,22 @@ async function getMedicineById(req, res) {
         m.dosage_form,
         m.manufacturer,
         m.prescription_required,
-        COALESCE(MIN(CASE WHEN p.approval_status = 'approved' AND pi.quantity > 0 THEN pi.price ELSE NULL END), 0) AS min_price,
-        COUNT(DISTINCT CASE WHEN p.approval_status = 'approved' AND pi.quantity > 0 THEN pi.pharmacy_id END) AS available_pharmacies_count
+        COALESCE(MIN(CASE WHEN p.approval_status = 'approved' AND pi.quantity - pi.reserved_quantity > 0 THEN pi.price ELSE NULL END), 0) AS min_price,
+        COUNT(DISTINCT CASE WHEN p.approval_status = 'approved' AND pi.quantity - pi.reserved_quantity > 0 THEN pi.pharmacy_id END) AS available_pharmacies_count
       FROM medicines m
       LEFT JOIN pharmacy_inventory pi ON m.id = pi.medicine_id
-      LEFT JOIN pharmacies p ON pi.pharmacy_id = p.id AND p.approval_status = 'approved'
+      LEFT JOIN pharmacies p ON pi.pharmacy_id = p.id AND p.approval_status = 'approved' ${alternativeLocationCondition}
       WHERE 
         m.id != ? AND 
         m.active_ingredient = ? AND 
         m.strength = ? AND 
         m.dosage_form = ?
       GROUP BY m.id
+      HAVING available_pharmacies_count > 0
     `;
 
     const verifiedAlternatives = await db.query(altSql, [
+      ...alternativeLocationParams,
       medicine.id,
       medicine.active_ingredient,
       medicine.strength,
@@ -345,11 +385,11 @@ async function getMedicineById(req, res) {
         pharmacies: nearbyPharmacies,
         nearbyPharmacyRadiusKm: DEFAULT_PHARMACY_RADIUS_KM,
         verifiedAlternatives,
-        patientReferenceLocation: {
+        patientReferenceLocation: hasLocation ? {
           latitude: clientLat,
           longitude: clientLng,
           label: 'Your Current Search Area'
-        },
+        } : null,
         medicalDisclaimer: 'IMPORTANT MEDICAL NOTICE: This platform provides medicine availability information and reservation for in-person pickup. Information regarding bio-equivalent alternatives is provided for informational comparison only. Patients must always consult a qualified healthcare professional and present a valid prescription before substituting or taking medications.'
       }
     });

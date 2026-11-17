@@ -235,7 +235,7 @@ export default function InventoryManagementPage() {
                   <th>Medicine / Formulation</th>
                   <th>Strength & Form</th>
                   <th>Price (₹)</th>
-                  <th>Quantity In Stock</th>
+                  <th>Physical / Available Stock</th>
                   <th>Min Safety Level</th>
                   <th>Status</th>
                   <th>Last Updated</th>
@@ -264,7 +264,8 @@ export default function InventoryManagementPage() {
                       </strong>
                     </td>
                     <td>
-                      <strong style={{ fontSize: '1.1rem' }}>{item.quantity}</strong> units
+                      <strong style={{ fontSize: '1.1rem' }}>{item.available_quantity}</strong> available
+                      <span className="cell-sub">{item.reserved_quantity} held · {item.quantity} physical</span>
                     </td>
                     <td>{item.min_stock_level} units</td>
                     <td>{getAvailabilityBadge(item.availability_status)}</td>

@@ -19,13 +19,19 @@ MediFind is a modern, full-stack healthcare web application designed to connect 
   - `Low Stock` (Stock ≤ Minimum Stock Level)
   - `Out of Stock` (Stock = 0)
 
-### 3. Frictionless Medicine Reservation
-- **24-Hour In-Store Hold**: Patients reserve medicines with quantity selection and optional notes without requiring online payments.
-- **Unique Reservation ID**: Generates a tamper-proof code (e.g. `MF-RES-84920`) for quick counter lookup.
-- **Safety Guards**: System strictly prevents reserving quantities that exceed currently available shelf inventory.
-- **Direct Counter Fulfillment**: Patients settle payments directly at the counter upon physical collection with valid prescription verification.
+### 3. Medicine Booking & Temporary Holds
+- Patients submit booking requests for nearby in-stock medicines; pharmacy owners approve or reject them.
+- Approval atomically holds the requested quantity and sets an expiry using the pharmacy's configurable 1-168 hour pickup window.
+- Cancellation, expiry, and collection update held and physical stock transactionally; overbooking is rejected.
+- Patients can track booking status and collection deadlines from My Reservations.
 
-### 4. Role-Based Dashboards & Portals
+### 4. Procurement Requests & Prescriptions
+- Patients can ask a nearby pharmacy to procure an unavailable medicine and track acceptance, arrival estimates, delays, price, ready status, and collection expiry.
+- In-app notifications record booking, procurement, and prescription status updates.
+- Prescription-required medicines need a pharmacy-verified PDF/JPEG/PNG/WebP upload (up to 8 MB) before booking.
+- Prescription files are stored outside the static web root and can only be retrieved by the patient who uploaded them or the selected pharmacy owner.
+
+### 5. Role-Based Dashboards & Portals
 
 | Role | Features & Capabilities |
 | :--- | :--- |
@@ -69,8 +75,13 @@ MediFind is a modern, full-stack healthcare web application designed to connect 
 
 ### 2. Database Initialization
 ```bash
-# Apply schema and seed rich realistic data
+# Create tables for a new database
 mysql -u root < database/schema.sql
+
+# Apply safe additive changes to an existing database
+cd server && npm run db:migrate
+
+# Optional development fixtures only; this resets the database
 cd server && npm run db:seed
 ```
 

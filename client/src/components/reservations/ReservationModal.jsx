@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShoppingBag, 
@@ -15,15 +15,14 @@ import {
 } from 'lucide-react';
 import Modal from '../common/Modal';
 import Alert from '../common/Alert';
-import { reservationService } from '../../services/api';
+import { prescriptionService, reservationService } from '../../services/api';
 import './ReservationModal.css';
 
 export default function ReservationModal({
   isOpen,
   onClose,
   medicine,
-  pharmacy,
-  onSuccess
+  pharmacy
 }) {
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
@@ -31,6 +30,32 @@ export default function ReservationModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [reservationConfirmed, setReservationConfirmed] = useState(null);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [prescriptionId, setPrescriptionId] = useState(null);
+  const [prescriptionFile, setPrescriptionFile] = useState(null);
+  const [isUploadingPrescription, setIsUploadingPrescription] = useState(false);
+  const [prescriptionMessage, setPrescriptionMessage] = useState('');
+
+  const pharmacyId = pharmacy?.pharmacyId || pharmacy?.id;
+
+  useEffect(() => {
+    if (!isOpen || !medicine?.prescription_required || !pharmacyId) return;
+    let active = true;
+    setPrescriptions([]);
+    setPrescriptionId(null);
+    setPrescriptionMessage('');
+    prescriptionService.getPatientPrescriptions({ medicineId: medicine.id, pharmacyId })
+      .then(response => {
+        if (!active) return;
+        const items = response.data.data || [];
+        setPrescriptions(items);
+        setPrescriptionId(items.find(item => item.status === 'Verified')?.id || null);
+      })
+      .catch(() => {
+        if (active) setPrescriptionMessage('Could not load prescription verification status.');
+      });
+    return () => { active = false; };
+  }, [isOpen, medicine?.id, medicine?.prescription_required, pharmacyId]);
 
   if (!medicine || !pharmacy) return null;
 
@@ -47,6 +72,10 @@ export default function ReservationModal({
 
   const handleConfirmReservation = async (e) => {
     e.preventDefault();
+    if (medicine.prescription_required && !prescriptionId) {
+      setError('Upload a prescription and wait for pharmacy verification before booking.');
+      return;
+    }
     setError(null);
     setIsLoading(true);
 
@@ -55,13 +84,13 @@ export default function ReservationModal({
         pharmacyId: pharmacy.pharmacyId || pharmacy.id,
         medicineId: medicine.id,
         quantity,
-        notes: notes.trim()
+        notes: notes.trim(),
+        prescriptionId
       };
 
       const res = await reservationService.create(payload);
       if (res.data.success) {
         setReservationConfirmed(res.data.reservation);
-        if (onSuccess) onSuccess(res.data.reservation);
       } else {
         setError(res.data.message || 'Failed to place reservation.');
       }
@@ -71,6 +100,33 @@ export default function ReservationModal({
       setError(msg);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePrescriptionUpload = async (event) => {
+    event.preventDefault();
+    if (!prescriptionFile) {
+      setPrescriptionMessage('Select a prescription image or PDF first.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('prescription', prescriptionFile);
+    formData.append('pharmacyId', pharmacyId);
+    formData.append('medicineId', medicine.id);
+    setIsUploadingPrescription(true);
+    setPrescriptionMessage('');
+    try {
+      await prescriptionService.upload(formData);
+      const response = await prescriptionService.getPatientPrescriptions({ medicineId: medicine.id, pharmacyId });
+      setPrescriptions(response.data.data || []);
+      setPrescriptionId(response.data.data?.find(item => item.status === 'Verified')?.id || null);
+      setPrescriptionFile(null);
+      setPrescriptionMessage('Prescription uploaded. Booking will unlock after the pharmacy verifies it.');
+    } catch (uploadError) {
+      setPrescriptionMessage(uploadError.response?.data?.message || 'Prescription upload failed.');
+    } finally {
+      setIsUploadingPrescription(false);
     }
   };
 
@@ -96,9 +152,9 @@ export default function ReservationModal({
             <CheckCircle2 size={42} className="text-success" />
           </div>
 
-          <h3 className="success-heading">Medicine Reserved Successfully!</h3>
+          <h3 className="success-heading">Booking Request Sent</h3>
           <p className="success-sub">
-            The pharmacy has been notified to prepare your order for in-store pickup.
+            The pharmacy has been notified to review your request. Your stock hold and pickup deadline will appear after the pharmacy approves it.
           </p>
 
           <div className="reservation-code-card">
@@ -143,7 +199,7 @@ export default function ReservationModal({
               <span>Important Collection Guidelines</span>
             </h4>
             <ul>
-              <li>Collect within 24 hours of confirmation.</li>
+              <li>{reservationConfirmed.pickupDeadline ? `Collect by ${new Date(reservationConfirmed.pickupDeadline).toLocaleString()}.` : 'The pharmacy must approve this booking and will then provide your collection deadline.'}</li>
               <li>Pay directly at the pharmacy counter upon physical collection.</li>
               {medicine.prescription_required && (
                 <li className="rx-alert">
@@ -190,10 +246,41 @@ export default function ReservationModal({
             {medicine.prescription_required ? (
               <div className="res-rx-badge">
                 <FileText size={14} />
-                <span>Doctor prescription required at counter upon collection</span>
+                <span>Pharmacy verification is required before this medicine can be booked.</span>
               </div>
             ) : null}
           </div>
+
+          {medicine.prescription_required && (
+            <section className="card" style={{ padding: '16px', marginBottom: '16px' }}>
+              <h4 style={{ marginBottom: '8px' }}>Prescription verification</h4>
+              {prescriptionId ? (
+                <p style={{ color: 'var(--color-success)' }}>A prescription for this medicine has been verified by this pharmacy.</p>
+              ) : (
+                <>
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', marginBottom: '10px' }}>
+                    Upload a clear image or PDF. The pharmacy will review it before booking is enabled.
+                  </p>
+                  <div>
+                    <input
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png,image/webp"
+                      onChange={(event) => setPrescriptionFile(event.target.files?.[0] || null)}
+                    />
+                    <button type="button" className="btn btn-outline btn-sm" onClick={handlePrescriptionUpload} disabled={isUploadingPrescription || !prescriptionFile} style={{ marginTop: '10px' }}>
+                      {isUploadingPrescription ? 'Uploading...' : 'Upload prescription'}
+                    </button>
+                  </div>
+                  {prescriptions.map(item => (
+                    <p key={item.id} style={{ fontSize: '0.84rem', marginTop: '8px' }}>
+                      {item.original_filename}: <strong>{item.status}</strong>{item.review_notes ? ` · ${item.review_notes}` : ''}
+                    </p>
+                  ))}
+                </>
+              )}
+              {prescriptionMessage && <p role="status" style={{ fontSize: '0.84rem', marginTop: '8px' }}>{prescriptionMessage}</p>}
+            </section>
+          )}
 
           {/* Selected Pharmacy Info */}
           <div className="res-pharmacy-section">
@@ -279,9 +366,9 @@ export default function ReservationModal({
             <button
               type="submit"
               className="btn btn-primary btn-confirm"
-              disabled={isLoading || availableStock <= 0}
+              disabled={isLoading || availableStock <= 0 || (medicine.prescription_required && !prescriptionId)}
             >
-              <span>{isLoading ? 'Reserving...' : 'Confirm Reservation'}</span>
+              <span>{isLoading ? 'Sending booking...' : 'Request Booking'}</span>
               <ArrowRight size={16} />
             </button>
           </div>

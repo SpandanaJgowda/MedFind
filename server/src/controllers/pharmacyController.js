@@ -16,18 +16,23 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 // 1. Discover Nearby Approved Pharmacies
 async function getNearbyPharmacies(req, res) {
   try {
-    const { user_lat, user_lng, city, search, medicine_id } = req.query;
+    const { user_lat, user_lng, search, medicine_id } = req.query;
+    const clientLat = Number.parseFloat(user_lat);
+    const clientLng = Number.parseFloat(user_lng);
+    const radiusParam = req.query.radius_km === undefined ? 25 : Number.parseFloat(req.query.radius_km);
+    const limitParam = req.query.limit === undefined ? 20 : Number.parseInt(req.query.limit, 10);
 
-    const clientLat = user_lat ? parseFloat(user_lat) : 12.9716;
-    const clientLng = user_lng ? parseFloat(user_lng) : 77.5946;
+    if (!Number.isFinite(clientLat) || !Number.isFinite(clientLng) || clientLat < -90 || clientLat > 90 || clientLng < -180 || clientLng > 180) {
+      return res.status(400).json({ success: false, message: 'A valid patient latitude and longitude are required.' });
+    }
+    if (!Number.isFinite(radiusParam) || radiusParam <= 0) {
+      return res.status(400).json({ success: false, message: 'Search radius must be a positive number of kilometers.' });
+    }
+    const radiusKm = Math.min(radiusParam, 100);
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : 20;
 
     let where = ["p.approval_status = 'approved'"];
     let params = [];
-
-    if (city) {
-      where.push('p.city LIKE ?');
-      params.push(`%${city}%`);
-    }
 
     if (search) {
       where.push('(p.name LIKE ? OR p.address LIKE ?)');
@@ -38,7 +43,7 @@ async function getNearbyPharmacies(req, res) {
       SELECT 
         p.*,
         COUNT(DISTINCT pi.id) AS total_medicines_count,
-        SUM(CASE WHEN pi.quantity > 0 THEN 1 ELSE 0 END) AS in_stock_medicines_count
+        SUM(CASE WHEN pi.quantity - pi.reserved_quantity > 0 THEN 1 ELSE 0 END) AS in_stock_medicines_count
       FROM pharmacies p
       LEFT JOIN pharmacy_inventory pi ON p.id = pi.pharmacy_id
       WHERE ${where.join(' AND ')}
@@ -61,7 +66,7 @@ async function getNearbyPharmacies(req, res) {
         let specificMedicineStock = null;
         if (medicine_id) {
           const medStockRows = await db.query(
-            'SELECT price, quantity, min_stock_level, last_updated FROM pharmacy_inventory WHERE pharmacy_id = ? AND medicine_id = ?',
+            'SELECT price, quantity - reserved_quantity AS quantity, min_stock_level, last_updated FROM pharmacy_inventory WHERE pharmacy_id = ? AND medicine_id = ?',
             [pharm.id, medicine_id]
           );
           if (medStockRows.length > 0) {
@@ -98,13 +103,17 @@ async function getNearbyPharmacies(req, res) {
       })
     );
 
-    // Sort by distance
-    pharmacies.sort((a, b) => a.distanceKm - b.distanceKm);
+    // Coordinates are authoritative; a reverse-geocoded label may contain a locality and district.
+    const nearbyPharmacies = pharmacies
+      .filter(pharmacy => Number.isFinite(pharmacy.distanceKm) && pharmacy.distanceKm <= radiusKm)
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, limit);
 
     return res.json({
       success: true,
-      data: pharmacies,
-      userLocation: { latitude: clientLat, longitude: clientLng }
+      data: nearbyPharmacies,
+      userLocation: { latitude: clientLat, longitude: clientLng },
+      radiusKm
     });
   } catch (error) {
     console.error('getNearbyPharmacies error:', error);
@@ -124,10 +133,10 @@ async function getPharmacyDashboardStats(req, res) {
     const invStatsSql = `
       SELECT 
         COUNT(*) AS total_medicines,
-        SUM(CASE WHEN quantity > min_stock_level THEN 1 ELSE 0 END) AS available_count,
-        SUM(CASE WHEN quantity > 0 AND quantity <= min_stock_level THEN 1 ELSE 0 END) AS low_stock_count,
-        SUM(CASE WHEN quantity = 0 THEN 1 ELSE 0 END) AS out_of_stock_count,
-        COALESCE(SUM(quantity), 0) AS total_inventory_units
+        SUM(CASE WHEN quantity - reserved_quantity > min_stock_level THEN 1 ELSE 0 END) AS available_count,
+        SUM(CASE WHEN quantity - reserved_quantity > 0 AND quantity - reserved_quantity <= min_stock_level THEN 1 ELSE 0 END) AS low_stock_count,
+        SUM(CASE WHEN quantity - reserved_quantity <= 0 THEN 1 ELSE 0 END) AS out_of_stock_count,
+        COALESCE(SUM(quantity - reserved_quantity), 0) AS total_inventory_units
       FROM pharmacy_inventory
       WHERE pharmacy_id = ?
     `;
@@ -174,7 +183,7 @@ async function getPharmacyDashboardStats(req, res) {
       SELECT 
         COALESCE(c.name, 'Uncategorized') AS category_name,
         COUNT(pi.id) AS medicine_count,
-        SUM(pi.quantity) AS total_units
+        SUM(pi.quantity - pi.reserved_quantity) AS total_units
       FROM pharmacy_inventory pi
       JOIN medicines m ON pi.medicine_id = m.id
       LEFT JOIN categories c ON m.category_id = c.id
@@ -258,11 +267,11 @@ async function getPharmacyInventory(req, res) {
     }
 
     if (status === 'available') {
-      whereClauses.push('pi.quantity > pi.min_stock_level');
+      whereClauses.push('pi.quantity - pi.reserved_quantity > pi.min_stock_level');
     } else if (status === 'low_stock') {
-      whereClauses.push('pi.quantity > 0 AND pi.quantity <= pi.min_stock_level');
+      whereClauses.push('pi.quantity - pi.reserved_quantity > 0 AND pi.quantity - pi.reserved_quantity <= pi.min_stock_level');
     } else if (status === 'out_of_stock') {
-      whereClauses.push('pi.quantity = 0');
+      whereClauses.push('pi.quantity - pi.reserved_quantity <= 0');
     }
 
     const sql = `
@@ -272,6 +281,8 @@ async function getPharmacyInventory(req, res) {
         pi.medicine_id,
         pi.price,
         pi.quantity,
+        pi.reserved_quantity,
+        pi.quantity - pi.reserved_quantity AS available_quantity,
         pi.min_stock_level,
         pi.last_updated,
         m.name AS medicine_name,
@@ -284,8 +295,8 @@ async function getPharmacyInventory(req, res) {
         m.prescription_required,
         c.name AS category_name,
         CASE 
-          WHEN pi.quantity = 0 THEN 'Out of Stock'
-          WHEN pi.quantity <= pi.min_stock_level THEN 'Low Stock'
+          WHEN pi.quantity - pi.reserved_quantity <= 0 THEN 'Out of Stock'
+          WHEN pi.quantity - pi.reserved_quantity <= pi.min_stock_level THEN 'Low Stock'
           ELSE 'Available'
         END AS availability_status
       FROM pharmacy_inventory pi
@@ -326,11 +337,14 @@ async function addInventoryItem(req, res) {
 
     // Check if item already exists in pharmacy inventory
     const existing = await db.query(
-      'SELECT id FROM pharmacy_inventory WHERE pharmacy_id = ? AND medicine_id = ?',
+      'SELECT id, reserved_quantity FROM pharmacy_inventory WHERE pharmacy_id = ? AND medicine_id = ?',
       [pharmacyId, medicineId]
     );
 
     if (existing.length > 0) {
+      if (numQty < existing[0].reserved_quantity) {
+        return res.status(400).json({ success: false, message: `Quantity cannot be lower than the ${existing[0].reserved_quantity} units already reserved.` });
+      }
       // Update existing item
       await db.query(
         'UPDATE pharmacy_inventory SET price = ?, quantity = ?, min_stock_level = ?, last_updated = NOW() WHERE id = ?',
@@ -371,9 +385,12 @@ async function updateInventoryItem(req, res) {
       return res.status(400).json({ success: false, message: 'Please provide valid positive numbers for price and quantity.' });
     }
 
-    const check = await db.query('SELECT id FROM pharmacy_inventory WHERE id = ? AND pharmacy_id = ?', [id, pharmacyId]);
+    const check = await db.query('SELECT id, reserved_quantity FROM pharmacy_inventory WHERE id = ? AND pharmacy_id = ?', [id, pharmacyId]);
     if (check.length === 0) {
       return res.status(404).json({ success: false, message: 'Inventory item not found.' });
+    }
+    if (numQty < check[0].reserved_quantity) {
+      return res.status(400).json({ success: false, message: `Quantity cannot be lower than the ${check[0].reserved_quantity} units already reserved.` });
     }
 
     await db.query(
@@ -394,9 +411,12 @@ async function deleteInventoryItem(req, res) {
     const pharmacyId = req.user.pharmacy_id;
     const { id } = req.params;
 
-    const check = await db.query('SELECT id FROM pharmacy_inventory WHERE id = ? AND pharmacy_id = ?', [id, pharmacyId]);
+    const check = await db.query('SELECT id, reserved_quantity FROM pharmacy_inventory WHERE id = ? AND pharmacy_id = ?', [id, pharmacyId]);
     if (check.length === 0) {
       return res.status(404).json({ success: false, message: 'Inventory record not found.' });
+    }
+    if (check[0].reserved_quantity > 0) {
+      return res.status(409).json({ success: false, message: 'Inventory cannot be removed while units are reserved for pickup.' });
     }
 
     await db.query('DELETE FROM pharmacy_inventory WHERE id = ?', [id]);
@@ -419,29 +439,40 @@ async function updatePharmacyProfile(req, res) {
       state,
       pincode,
       openingHours,
+      reservationHoldHours,
       latitude,
       longitude
     } = req.body;
 
-    if (!name || !phone || !address || !city) {
-      return res.status(400).json({ success: false, message: 'Pharmacy name, phone, address and city are required.' });
+    const latitudeValue = Number.parseFloat(latitude);
+    const longitudeValue = Number.parseFloat(longitude);
+    if (!name || !phone || !address || !city || !state || !pincode) {
+      return res.status(400).json({ success: false, message: 'Pharmacy name, address, city, state, PIN code and phone are required.' });
+    }
+    if (!Number.isFinite(latitudeValue) || !Number.isFinite(longitudeValue) || latitudeValue < -90 || latitudeValue > 90 || longitudeValue < -180 || longitudeValue > 180) {
+      return res.status(400).json({ success: false, message: 'Valid store latitude and longitude are required.' });
+    }
+    const holdHours = Number.parseInt(reservationHoldHours, 10);
+    if (!Number.isInteger(holdHours) || holdHours < 1 || holdHours > 168) {
+      return res.status(400).json({ success: false, message: 'Reservation hold duration must be between 1 and 168 hours.' });
     }
 
     await db.query(
       `UPDATE pharmacies SET 
         name = ?, phone = ?, address = ?, city = ?, state = ?, pincode = ?, 
-        opening_hours = ?, latitude = COALESCE(?, latitude), longitude = COALESCE(?, longitude)
+        opening_hours = ?, reservation_hold_hours = ?, latitude = ?, longitude = ?
        WHERE id = ?`,
       [
         name.trim(),
         phone.trim(),
         address.trim(),
         city.trim(),
-        state ? state.trim() : 'Karnataka',
-        pincode ? pincode.trim() : '560001',
+        state.trim(),
+        pincode.trim(),
         openingHours ? openingHours.trim() : '08:00 AM - 10:00 PM',
-        latitude ? parseFloat(latitude) : null,
-        longitude ? parseFloat(longitude) : null,
+        holdHours,
+        latitudeValue,
+        longitudeValue,
         pharmacyId
       ]
     );

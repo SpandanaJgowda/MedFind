@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Store, MapPin, Phone, Clock, FileText, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { pharmacyService } from '../../services/api';
+import { geocodeIndianAddress } from '../../services/location';
 import Alert from '../../components/common/Alert';
 import './PharmacyDashboard.css';
 
@@ -12,16 +13,18 @@ export default function PharmacyProfilePage() {
     name: user?.pharmacy?.name || '',
     phone: user?.pharmacy?.phone || '',
     address: user?.pharmacy?.address || '',
-    city: user?.pharmacy?.city || 'Bengaluru',
-    state: user?.pharmacy?.state || 'Karnataka',
-    pincode: user?.pharmacy?.pincode || '560001',
+    city: user?.pharmacy?.city || '',
+    state: user?.pharmacy?.state || '',
+    pincode: user?.pharmacy?.pincode || '',
     openingHours: user?.pharmacy?.opening_hours || '08:00 AM - 10:00 PM',
+    reservationHoldHours: user?.pharmacy?.reservation_hold_hours || 24,
     latitude: '',
     longitude: ''
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [alert, setAlert] = useState(null);
+  const originalAddressRef = useRef(null);
 
   useEffect(() => {
     async function loadPharmDetails() {
@@ -34,13 +37,20 @@ export default function PharmacyProfilePage() {
               name: p.name || '',
               phone: p.phone || '',
               address: p.address || '',
-              city: p.city || 'Bengaluru',
-              state: p.state || 'Karnataka',
-              pincode: p.pincode || '560001',
+              city: p.city || '',
+              state: p.state || '',
+              pincode: p.pincode || '',
               openingHours: p.opening_hours || '08:00 AM - 10:00 PM',
+              reservationHoldHours: p.reservation_hold_hours || 24,
               latitude: p.latitude || '',
               longitude: p.longitude || ''
             });
+            originalAddressRef.current = {
+              address: p.address || '',
+              city: p.city || '',
+              state: p.state || '',
+              pincode: p.pincode || ''
+            };
           }
         } catch (err) {
           console.error('Failed to load pharmacy details:', err);
@@ -60,12 +70,26 @@ export default function PharmacyProfilePage() {
     setAlert(null);
 
     try {
-      const res = await pharmacyService.updateProfile(formData);
+      const addressChanged = originalAddressRef.current &&
+        ['address', 'city', 'state', 'pincode'].some(key => originalAddressRef.current[key] !== formData[key]);
+      const validCoordinates = Number.isFinite(Number.parseFloat(formData.latitude)) &&
+        Number.isFinite(Number.parseFloat(formData.longitude));
+      const updatedData = addressChanged || !validCoordinates
+        ? { ...formData, ...await geocodeIndianAddress(formData) }
+        : formData;
+      const res = await pharmacyService.updateProfile(updatedData);
       if (res.data.success) {
+        setFormData(updatedData);
+        originalAddressRef.current = {
+          address: updatedData.address,
+          city: updatedData.city,
+          state: updatedData.state,
+          pincode: updatedData.pincode
+        };
         setAlert({ type: 'success', message: 'Pharmacy store details updated successfully.' });
       }
     } catch (err) {
-      setAlert({ type: 'danger', message: 'Failed to update pharmacy profile.' });
+      setAlert({ type: 'danger', message: err.response?.data?.message || err.message || 'Failed to update pharmacy profile.' });
     } finally {
       setIsLoading(false);
     }
@@ -208,9 +232,10 @@ export default function PharmacyProfilePage() {
                 type="text"
                 name="latitude"
                 className="form-input"
-                placeholder="e.g. 12.9716"
+                placeholder="Store latitude"
                 value={formData.latitude}
                 onChange={handleChange}
+                required
               />
             </div>
 
@@ -220,11 +245,27 @@ export default function PharmacyProfilePage() {
                 type="text"
                 name="longitude"
                 className="form-input"
-                placeholder="e.g. 77.5946"
+                placeholder="Store longitude"
                 value={formData.longitude}
                 onChange={handleChange}
+                required
               />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Medicine Hold Duration (hours)</label>
+            <input
+              type="number"
+              name="reservationHoldHours"
+              className="form-input"
+              min="1"
+              max="168"
+              value={formData.reservationHoldHours}
+              onChange={handleChange}
+              required
+            />
+            <span className="form-help-text">Confirmed bookings expire automatically after this period (1-168 hours).</span>
           </div>
 
           <button
